@@ -1,0 +1,13 @@
+# Build artifacts
+*.zip
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Python (icon script)
+__pycache__/
+*.pyc

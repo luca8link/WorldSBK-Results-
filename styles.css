@@ -1,0 +1,10 @@
+/* Injected gap columns — keep them readable and aligned with the time column. */
+.wsbk-gap-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-size: 14px;
+}
+td.wsbk-gap-cell {
+  font-feature-settings: "tnum" 1;
+}
