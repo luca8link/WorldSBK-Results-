@@ -1,10 +1,17 @@
-/* Injected gap columns — keep them readable and aligned with the time column. */
-.wsbk-gap-cell {
+/* Injected columns — selectors are scoped with the site's own cell class so they
+   out-specify worldsbk.com's stylesheet regardless of load order. */
+th.results-table__header-cell.wsbk-col,
+td.results-table__body-cell.wsbk-col {
   text-align: right;
-  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   font-size: 14px;
-}
-td.wsbk-gap-cell {
+  font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
+}
+
+/* Points column: make it stand out a touch. */
+th.results-table__header-cell.wsbk-points,
+td.results-table__body-cell.wsbk-points {
+  text-align: center;
+  font-weight: 700;
 }
