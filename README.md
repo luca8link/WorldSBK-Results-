@@ -25,6 +25,10 @@ When the selected session is a race, a **Pts** column is added with the points e
 
 Practice and qualifying sessions get no points column. Unclassified riders (DNF/DNS) show `–`.
 
+### Official PDFs (Results & Standings)
+
+Below the results widget, the extension appends a tabbed panel with the official **Results** and **Championship Standings** PDFs for the page you're on. It uses the links the site already provides when present, otherwise it builds each URL from the page's path segments (year / event / category / session) plus a fixed tail (`CLA/Results.pdf`, `STD/ChampionshipStandings.pdf`). PDFs embed inline where the browser allows it, and fall back to an "open in new tab" link when inline embedding is blocked.
+
 ## Install (Chrome / Edge / Brave)
 
 Until it's on the Chrome Web Store, load it unpacked:

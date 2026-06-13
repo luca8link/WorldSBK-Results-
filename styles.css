@@ -15,3 +15,67 @@ td.results-table__body-cell.wsbk-points {
   text-align: center;
   font-weight: 700;
 }
+
+/* Official Results PDF panel, appended after the results widget. */
+.wsbk-pdf {
+  margin: 16px 0;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.wsbk-pdf__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #c1121f;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+.wsbk-pdf__link,
+.wsbk-pdf__link:visited {
+  color: #fff;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+.wsbk-pdf__obj {
+  display: block;
+  width: 100%;
+  height: 75vh;
+  border: 0;
+}
+.wsbk-pdf__fallback {
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: #222;
+}
+
+/* PDF panel tabs (Results / Standings). */
+.wsbk-pdf__tabs {
+  display: flex;
+  gap: 6px;
+}
+.wsbk-pdf__tab {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.wsbk-pdf__tab--active {
+  background: #fff;
+  color: #c1121f;
+}
+.wsbk-pdf__viewer {
+  display: block;
+}

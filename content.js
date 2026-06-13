@@ -1,45 +1,37 @@
 // WorldSBK Gap Columns
-// Adds "Gap to 1st" and "Gap to prev" after the Time cell on every results table.
-// On RACE sessions it also adds a "Pts" column with championship points.
+// - Adds "Gap to 1st" and "Gap to prev" after the Time cell on every results table.
+// - On RACE sessions adds a "Pts" column with championship points.
+// - Appends a tabbed PDF panel (Results / Standings) below the results widget.
 
 const TABLE_SEL = "table.results-table__table";
 const TIME_HEAD = ".results-table__header-cell--time";
 const TIME_CELL = ".results-table__body-cell--time";
 const POS_CELL = ".results-table__body-cell--pos";
-const TAG = "wsbk-col"; // marks cells we inject, so re-runs are idempotent
+const RESULTS_SEL = ".results"; // the widget container; PDF panel goes right after it
+const TAG = "wsbk-col";   // marks injected table cells (idempotent re-runs)
+const PDF_TAG = "wsbk-pdf"; // marks the injected PDF panel
 
 // Championship points by finishing position.
-// Full races (Race 1 / Race 2): top 15 score.
 const POINTS_FULL = {
   1: 25, 2: 20, 3: 16, 4: 13, 5: 11, 6: 10, 7: 9, 8: 8,
   9: 7, 10: 6, 11: 5, 12: 4, 13: 3, 14: 2, 15: 1,
 };
-// Superpole Race (10-lap sprint): top 9 score, reduced scale.
 const POINTS_SPRINT = {
   1: 12, 2: 10, 3: 9, 4: 7, 5: 6, 6: 5, 7: 4, 8: 3, 9: 2,
 };
 
-// The session is identified by the LAST path segment of the URL (the site's
-// <select> does not reflect the active session, so we can't read it from there).
-//   .../sbk/001 -> Race 1   .../sbk/002 -> Superpole Race   .../sbk/003 -> Race 2
-//   .../sbk/l1a -> FP1, /q1a -> Superpole (qualifying), /w1a -> Warm Up, etc.
-const RACE_CODES = {
-  "001": POINTS_FULL,    // Race 1
-  "003": POINTS_FULL,    // Race 2
-  "002": POINTS_SPRINT,  // Superpole Race
-};
+// Session is identified by the LAST path segment of the URL (the site's <select>
+// does not reflect the active session).
+const RACE_CODES = { "001": POINTS_FULL, "003": POINTS_FULL, "002": POINTS_SPRINT };
 
 function sessionCode() {
   const seg = location.pathname.split("/").filter(Boolean).pop() || "";
   return seg.toUpperCase();
 }
 
-// Returns the points table for the current session, or null if it isn't a race.
 function pointsTableFor() {
   const code = sessionCode();
   if (RACE_CODES[code]) return RACE_CODES[code];
-  // Fallback: if the option label for this code mentions "Race", honour it
-  // (guards against the site changing codes). "Superpole" alone = qualifying.
   const opt = document.querySelector(
     'select[name="results-filter-session"] option[value="' + code + '"]'
   );
@@ -48,11 +40,119 @@ function pointsTableFor() {
   return null;
 }
 
-// Parse a lap/total/gap string. Returns { v: seconds, rel: isGapToLeader } or null.
-//   "1'32.733"  -> { v: 92.733,  rel: false }   (lap or total race time)
-//   "32'46.379" -> { v: 1966.379, rel: false }
-//   "+0.059"    -> { v: 0.059,   rel: true  }   (some pages show gaps directly)
-//   "+1 Lap" / "DNF" / "" -> null
+// ----- PDF panel (Results / Standings) ------------------------------------
+
+// Each PDF: a tab label, the site link text to match, and the URL tail to build.
+const PDFS = [
+  { tab: "Results", linkText: "results", tail: "CLA/Results.pdf" },
+  { tab: "Standings", linkText: "championship standings", tail: "STD/ChampionshipStandings.pdf" },
+];
+
+// Base URL for this session's files, from the page path:
+//   /en/results/2026/ara/sbk/003 -> https://resources.worldsbk.com/files/results/2026/ARA/SBK/003/
+function pdfBase() {
+  const parts = location.pathname.split("/").filter(Boolean);
+  const i = parts.indexOf("results");
+  if (i === -1 || parts.length < i + 5) return null;
+  const [year, event, cat, session] = parts.slice(i + 1, i + 5);
+  return (
+    "https://resources.worldsbk.com/files/results/" +
+    year + "/" + event.toUpperCase() + "/" + cat.toUpperCase() +
+    "/" + session.toUpperCase() + "/"
+  );
+}
+
+// Resolve one PDF's URL: prefer the link the site already rendered, else build it.
+function pdfUrl(spec) {
+  for (const a of document.querySelectorAll(".results-pdf__list-link")) {
+    const desc = a.querySelector(".results-pdf__list-description") || a;
+    if (desc.textContent.trim().toLowerCase() === spec.linkText && a.href) return a.href;
+  }
+  const base = pdfBase();
+  return base ? base + spec.tail : null;
+}
+
+let pdfActive = 0;      // remembered tab index across rebuilds
+let pdfBuiltKey = null; // session code the current panel was built for
+
+// Build the <object> embed (with fallback link) for the active spec.
+function renderViewer(viewer, openLink, spec) {
+  openLink.href = spec.url;
+  viewer.textContent = "";
+  const obj = document.createElement("object");
+  obj.className = PDF_TAG + "__obj";
+  obj.data = spec.url;
+  obj.type = "application/pdf";
+  const fb = document.createElement("p");
+  fb.className = PDF_TAG + "__fallback";
+  const fbLink = document.createElement("a");
+  fbLink.href = spec.url;
+  fbLink.target = "_blank";
+  fbLink.rel = "noopener noreferrer";
+  fbLink.textContent = "Open the PDF \u2197";
+  fb.append("Inline preview isn\u2019t available here. ", fbLink);
+  obj.append(fb);
+  viewer.append(obj);
+}
+
+function injectPdf() {
+  const container = document.querySelector(RESULTS_SEL);
+  if (!container) { pdfBuiltKey = null; return; }
+
+  const code = sessionCode();
+  const existing = document.querySelector("." + PDF_TAG);
+  // Already built for this session and correctly placed -> leave it (no reload).
+  if (existing && pdfBuiltKey === code && container.nextElementSibling === existing) return;
+  if (existing) existing.remove();
+
+  const specs = PDFS.map((s) => ({ ...s, url: pdfUrl(s) })).filter((s) => s.url);
+  if (!specs.length) { pdfBuiltKey = null; return; }
+  if (pdfActive >= specs.length) pdfActive = 0;
+
+  const panel = document.createElement("section");
+  panel.className = PDF_TAG;
+
+  const bar = document.createElement("div");
+  bar.className = PDF_TAG + "__bar";
+
+  const tabs = document.createElement("div");
+  tabs.className = PDF_TAG + "__tabs";
+
+  const openLink = document.createElement("a");
+  openLink.className = PDF_TAG + "__link";
+  openLink.target = "_blank";
+  openLink.rel = "noopener noreferrer";
+  openLink.textContent = "Open in new tab \u2197";
+
+  const viewer = document.createElement("div");
+  viewer.className = PDF_TAG + "__viewer";
+
+  const tabButtons = specs.map((spec, idx) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = PDF_TAG + "__tab" + (idx === pdfActive ? " " + PDF_TAG + "__tab--active" : "");
+    b.textContent = spec.tab;
+    b.addEventListener("click", () => {
+      pdfActive = idx;
+      tabButtons.forEach((tb, j) =>
+        tb.classList.toggle(PDF_TAG + "__tab--active", j === idx)
+      );
+      renderViewer(viewer, openLink, specs[idx]);
+    });
+    return b;
+  });
+  tabButtons.forEach((b) => tabs.append(b));
+
+  bar.append(tabs, openLink);
+  panel.append(bar, viewer);
+  renderViewer(viewer, openLink, specs[pdfActive]);
+
+  container.after(panel);
+  pdfBuiltKey = code;
+}
+
+// ----- Gap / points columns -----------------------------------------------
+
 function parseLap(raw) {
   let s = (raw || "").trim();
   let rel = false;
@@ -84,23 +184,20 @@ function td(text, extra) {
 }
 
 function enhance(table) {
-  // Clear anything we added before, so this is safe to call repeatedly
-  // (lazy loads, live-timing updates, session switches, SPA navigation).
   table.querySelectorAll("." + TAG).forEach((n) => n.remove());
 
   const headRow = table.querySelector("thead tr");
   const timeHead = headRow && headRow.querySelector(TIME_HEAD);
   if (!timeHead) return;
 
-  const points = pointsTableFor(); // null on practice/qualifying/warm-up
+  const points = pointsTableFor();
   const isRace = points != null;
 
-  // Headers: Gap 1st, Gap Prev, and (race only) Pts
   const headCells = [th("Gap 1st"), th("Gap Prev")];
   if (isRace) headCells.push(th("Pts", "wsbk-points"));
   timeHead.after(...headCells);
 
-  let firstAbs = null; // leader's time (slowest-looking total in a race, fastest in practice)
+  let firstAbs = null;
   let prevAbs = null;
 
   table.querySelectorAll("tbody tr").forEach((row) => {
@@ -112,9 +209,7 @@ function enhance(table) {
     let valid = false;
     if (p) {
       abs = p.rel && firstAbs != null ? firstAbs + p.v : p.v;
-      if (firstAbs == null) firstAbs = abs; // first row = leader, defines the baseline
-      // A genuine finisher is never ahead of the leader's total time. Retired
-      // riders show a smaller partial time, so treat those as unclassified.
+      if (firstAbs == null) firstAbs = abs;
       valid = abs >= firstAbs - 0.0005;
     }
 
@@ -123,32 +218,31 @@ function enhance(table) {
     if (valid) prevAbs = abs;
 
     const cells = [td(gapFirst), td(gapPrev)];
-
     if (isRace) {
       const posCell = row.querySelector(POS_CELL);
       const pos = posCell ? parseInt(posCell.textContent.trim(), 10) : NaN;
-      // Classified position -> points (0 if outside the scoring range).
-      // No numeric position -> "–".
       const pts = Number.isInteger(pos) ? (points[pos] || 0) : "–";
       cells.push(td(String(pts), "wsbk-points"));
     }
-
     timeCell.after(...cells);
   });
 }
+
+// ----- Orchestration -------------------------------------------------------
 
 let timer = null;
 let observer = null;
 
 function run() {
-  if (observer) observer.disconnect(); // avoid reacting to our own edits
+  if (observer) observer.disconnect();
   document.querySelectorAll(TABLE_SEL).forEach(enhance);
+  injectPdf();
   if (observer) observer.observe(document.body, { childList: true, subtree: true });
 }
 
 observer = new MutationObserver(() => {
   clearTimeout(timer);
-  timer = setTimeout(run, 200); // debounce lazy-load / live-timing / nav churn
+  timer = setTimeout(run, 200);
 });
 
 run();
