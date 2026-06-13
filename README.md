@@ -1,6 +1,6 @@
 # WorldSBK Results+
 
-An unofficial browser extension that enhances results pages on [worldsbk.com](https://www.worldsbk.com): it adds **gap** columns (to the leader and to the rider ahead), **championship points** on race sessions, and quick access to the official **Results** and **Standings** PDFs — so you can read a session at a glance instead of doing the subtraction in your head.
+An unofficial browser extension that enhances results pages on [worldsbk.com](https://www.worldsbk.com): it adds **gap** columns (to the leader and to the rider ahead), **championship points** on race sessions, and quick access to the official **Results** and **Standings** PDFs — so you can read a session at a glance instead.
 
 ![Screenshot placeholder — drop a capture of an enhanced results page here](docs/screenshot.png)
 
