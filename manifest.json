@@ -1,12 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "WorldSBK Results+",
+  "name": "WorldSBK Results Plus",
   "version": "1.0.0",
   "description": "Unofficial enhancements for worldsbk.com results: gap columns, championship points, and the official Results/Standings PDFs.",
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
     "128": "icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "WorldSBK Results Plus"
   },
   "content_scripts": [
     {
