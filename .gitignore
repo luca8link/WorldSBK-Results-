@@ -7,6 +7,3 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
-
-# Local workflow docs (brainstorm specs / plans) — not part of the extension
-docs/superpowers/
